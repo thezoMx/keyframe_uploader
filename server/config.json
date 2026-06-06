@@ -1,0 +1,11 @@
+{
+  "port": 34567,
+  "api_key_env": "ROBLOX_OPEN_CLOUD_KEY",
+  "creator": {
+    "userId": 92743235
+  },
+  "asset_type": "Animation",
+  "file_extension": "rbxm",
+  "file_content_type": "model/x-rbxm",
+  "rojo_path": ""
+}

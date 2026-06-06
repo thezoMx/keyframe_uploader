@@ -1,0 +1,5 @@
+# KeyframeUploader server uses only the Python standard library at runtime.
+# No third-party packages are required to run server.py.
+
+# Optional: only needed to build the standalone .exe for non-technical users.
+pyinstaller>=6.0

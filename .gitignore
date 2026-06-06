@@ -1,0 +1,24 @@
+# Never commit secrets. The API key lives in the ROBLOX_OPEN_CLOUD_KEY environment
+# variable, never in a file -- but ignore common secret files just in case.
+.env
+*.key
+secrets.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# PyInstaller build output
+build/
+dist/
+*.spec
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
