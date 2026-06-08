@@ -1,0 +1,6 @@
+converted/*
+output/*
+!converted/.gitkeep
+!output/.gitkeep
+__pycache__/
+*.pyc
