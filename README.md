@@ -8,11 +8,6 @@ serializes each selected animation and sends it to a local server. The server re
 as XML, converts that to a binary `.rbxm` with `rojo`, and uploads it through the Open
 Cloud Assets API.
 
-> Open Cloud's animation upload needs the binary `.rbxm` format. It rejects XML `.rbxmx`
-> with "Creating Animation from a model/x-rbxmx file is not supported yet", so the server
-> runs `rojo build` to produce the binary form. The pure-plugin alternative,
-> `AssetService:CreateAssetAsync`, isn't enabled by Roblox yet.
-
 ---
 
 ## Quick start with `rpx`
