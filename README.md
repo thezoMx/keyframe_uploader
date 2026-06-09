@@ -1,31 +1,23 @@
 # KeyframeUploader
 
-Batch-upload selected `KeyframeSequence` animations to Roblox and auto-place the resulting
-`Animation` instances into a folder structure you choose.
-
-```
-Studio plugin  ──localhost HTTP──►  Python server  ──Open Cloud──►  Roblox
-      ▲                                                                 │
-      └──────────────── asset ids returned in the response ◄───────────┘
-      │
-      └─► creates Animation instances at <root>/<destination path>
-```
+Batch-upload selected `KeyframeSequence` animations to Roblox and drop the resulting
+`Animation` instances into a folder structure you pick.
 
 A Studio plugin can't write files or upload a raw `KeyframeSequence`. So the plugin
-serializes each selected animation, sends it to a small local server, and that server
-rebuilds it as XML, converts it to a **binary `.rbxm`** with `rojo`, and uploads it
-through the **Open Cloud Assets API**.
+serializes each selected animation and sends it to a local server. The server rebuilds it
+as XML, converts that to a binary `.rbxm` with `rojo`, and uploads it through the Open
+Cloud Assets API.
 
-> Open Cloud animation upload requires the *binary* `.rbxm` format — it rejects XML
-> `.rbxmx` ("Creating Animation from a model/x-rbxmx file is not supported yet"). The
-> server uses `rojo build` to produce the binary form. `AssetService:CreateAssetAsync`
-> (a pure-plugin alternative) is not enabled by Roblox yet.
+> Open Cloud's animation upload needs the binary `.rbxm` format. It rejects XML `.rbxmx`
+> with "Creating Animation from a model/x-rbxmx file is not supported yet", so the server
+> runs `rojo build` to produce the binary form. The pure-plugin alternative,
+> `AssetService:CreateAssetAsync`, isn't enabled by Roblox yet.
 
 ---
 
-## Quick start with the `rpx` command
+## Quick start with `rpx`
 
-Install the command once, then everything is driven by `rpx`:
+Install it once; `rpx` drives the rest:
 
 ```powershell
 pip install keyframe-uploader   # creates the `rpx` command on PATH
@@ -33,59 +25,58 @@ rpx setup                       # API key, creator id, auto-install rojo, instal
 rpx                             # run the server (leave it running while you upload)
 ```
 
-(To work from a clone instead: `cd server` then `pip install -e .`.)
+Working from a clone instead? `cd server` then `pip install -e .`.
 
 | Command | What it does |
 | --- | --- |
-| `rpx` | Run the server. If anything is unconfigured it tells you to run `rpx setup`. |
-| `rpx setup` | Interactive: store the API key (env var), set your creator id, **auto-install rojo** (via rokit) if it's missing, and install the plugin into Studio. |
-| `rpx where` | Status/"doctor": shows every path and whether the key, creator, rojo, and plugin are configured. |
+| `rpx` | Run the server. If anything is unconfigured it points you to `rpx setup`. |
+| `rpx setup` | Interactive: store the API key (env var), set your creator id, auto-install rojo (via rokit) if it's missing, and link you to the plugin. |
+| `rpx where` | Status check: shows every path and whether the key, creator, rojo, and plugin are configured. |
 | `rpx help` | Show usage. |
 
-`rpx setup` links you straight to the API-key page
-(<https://create.roblox.com/dashboard/credentials?activeTab=ApiKeysTab>) and, if rojo
-isn't already installed, downloads [rokit](https://github.com/rojo-rbx/rokit) and runs
-`rokit add rojo-rbx/rojo --global` for you — no manual toolchain setup needed.
+`rpx setup` opens the API-key page
+(<https://create.roblox.com/dashboard/credentials?activeTab=ApiKeysTab>). If rojo is
+missing, it downloads [rokit](https://github.com/rojo-rbx/rokit) and runs
+`rokit add rojo-rbx/rojo --global` for you.
 
-> If `pip` warns that its `Scripts` folder isn't on `PATH`, add that folder to your
-> User `PATH` (one time) so `rpx` is typeable from any terminal. `rpx where` confirms
-> everything is wired up.
+> If `pip` warns that its `Scripts` folder isn't on `PATH`, add that folder to your User
+> `PATH` once so you can type `rpx` from any terminal. `rpx where` confirms the setup.
 
-The sections below explain the same setup done manually (useful for `rpx where` red flags
-or running without installing the command).
+Prefer to do it by hand? The manual steps below cover the same ground, and they help when
+`rpx where` flags something.
 
 ---
 
 ## 1. Prerequisites
 
-- **Python 3.8+** installed (needed to run the server).
-- **rojo** (used to build the binary `.rbxm`). You don't have to install it yourself —
-  `rpx setup` installs it via [rokit](https://github.com/rojo-rbx/rokit) if it's missing.
-  The server auto-discovers rojo from rokit's (or aftman's) tool-storage or `PATH`;
-  otherwise set `rojo_path` in `config.json`.
+- **Python 3.8+** to run the server.
+- **rojo**, which builds the binary `.rbxm`. You don't install it yourself: `rpx setup`
+  fetches it via [rokit](https://github.com/rojo-rbx/rokit) if it's missing. The server
+  finds rojo in rokit's (or aftman's) tool-storage or on `PATH`; otherwise set `rojo_path`
+  in `config.json`.
 - An **Open Cloud API key** with the `asset:write` (Assets / write) scope. Create one at
   <https://create.roblox.com/dashboard/credentials?activeTab=ApiKeysTab>:
   1. *Create API Key*.
-  2. Add the **Assets** API system, enable read & write.
-  3. Set the operating creator to **your user** (or your **group**).
+  2. Add the **Assets** API system, enable read and write.
+  3. Set the operating creator to your user (or your group).
   4. Copy the key.
 
 ## 2. Configure the server
 
-**The API key is a secret and is never stored in `config.json`.** It is read from an
-environment variable instead. Set it once (PowerShell, User scope so it persists):
+The API key is a secret, so it never goes in `config.json`. The server reads it from an
+environment variable. Set it once (PowerShell, User scope so it persists):
 
 ```powershell
 [Environment]::SetEnvironmentVariable("ROBLOX_OPEN_CLOUD_KEY", "YOUR_OPEN_CLOUD_API_KEY", "User")
 ```
 
-Normally env vars are only seen by processes started *after* you set them, so you'd open a
-new terminal. On Windows the server also reads the saved value directly (from the registry),
-so it works even from a terminal that was already open.
+A process only sees env vars that existed before it started, so you'd normally open a new
+terminal. On Windows the server also reads the saved value straight from the registry, so an
+already-open terminal works too.
 
-Everything non-secret lives in a per-user `config.json`, created automatically on first run
-(and populated by `rpx setup`). It lives in your platform's app-data folder — on Windows that's
-`%LOCALAPPDATA%\KeyframeUploader\config.json`. `rpx where` prints the exact path. Its contents:
+Everything non-secret lives in a per-user `config.json`, written on first run and filled in
+by `rpx setup`. On Windows it sits at `%LOCALAPPDATA%\KeyframeUploader\config.json`, and
+`rpx where` prints the exact path. Its contents:
 
 ```json
 {
@@ -99,14 +90,14 @@ Everything non-secret lives in a per-user `config.json`, created automatically o
 }
 ```
 
-- `api_key_env` — the **name** of the environment variable holding the key (not the key
-  itself). Change it only if you want a different variable name.
+- `api_key_env`: the **name** of the environment variable holding the key, not the key
+  itself. Change it only if you want a different variable name.
 - For a **group**, replace `"creator"` with `{ "groupId": 987654321 }`.
-- `asset_type` / `file_extension` / `file_content_type` are exposed in case Roblox changes
-  the expected values — the defaults match the Open Cloud animation-upload contract
+- `asset_type` / `file_extension` / `file_content_type` cover the case where Roblox changes
+  the expected values. The defaults match the Open Cloud animation-upload contract
   (binary `.rbxm`).
-- `rojo_path` — leave `""` to auto-discover; set an explicit path to a `rojo` executable
-  if discovery fails.
+- `rojo_path`: leave `""` to auto-discover, or set a path to a `rojo` executable if
+  discovery fails.
 
 ## 3. Run the server
 
@@ -118,31 +109,31 @@ You should see `KeyframeUploader server listening on http://127.0.0.1:34567`.
 
 ## 4. Install the plugin
 
-- In Studio, open `plugin/KeyframeUploaderPlugin.server.lua` as a `Script`, then
-  right-click it → **Save as Local Plugin**.
+- In Studio, open `plugin/KeyframeUploaderPlugin.server.lua` as a `Script`, then right-click
+  it and pick **Save as Local Plugin**.
 - A **KeyframeUploader** button appears in the **Plugins** tab. Click it to open the panel.
 
 ## 5. Use it
 
 1. Start the server.
 2. In the panel set:
-   - **Server URL** — default `http://127.0.0.1:34567`.
-   - **Root** — a service (`ReplicatedStorage`) or a top-level instance name.
-   - **Destination path** — e.g. `Sword/Attacks`. Leave blank to use the fallback
+   - **Server URL**: default `http://127.0.0.1:34567`.
+   - **Root**: a service (`ReplicatedStorage`) or a top-level instance name.
+   - **Destination path**: e.g. `Sword/Attacks`. Leave blank to use the fallback
      `ReplicatedStorage/UPLOADED_ANIMATIONS`.
 3. Select one or more `KeyframeSequence`s in the Explorer.
 4. Click **Upload selected animations**.
 
 The plugin creates any missing folders along the path and adds an `Animation` (named after
 the source KeyframeSequence) with its `AnimationId` set to the uploaded asset. The whole
-build is a single undo step.
+build collapses into one undo step.
 
 ## Notes
 
-- Uploaded animations may be **in moderation** briefly, but the `AnimationId` works for you
-  (the owner) immediately in Studio.
-- Re-uploading an animation with a name that already exists at the destination **updates**
-  that Animation's `AnimationId` rather than creating a duplicate.
+- A freshly uploaded animation may sit in moderation briefly, but its `AnimationId` works for
+  you (the owner) right away in Studio.
+- Re-upload an animation whose name already exists at the destination and the plugin updates
+  that Animation's `AnimationId` instead of creating a duplicate.
 - The server holds your API key; the plugin never sees it.
 
 ## Troubleshooting
@@ -153,9 +144,9 @@ build is a single undo step.
 | `HTTP 401/403` in the panel log | Bad/expired API key, missing `asset:write` scope, or the `ROBLOX_OPEN_CLOUD_KEY` env var isn't set in the terminal that launched the server. |
 | `No API key` warning at startup | Set `ROBLOX_OPEN_CLOUD_KEY` and restart the terminal/server. |
 | `HTTP 400 ... assetType` | Adjust `asset_type` / `file_content_type` in `config.json`. |
-| `HTTP 400 ... model/x-rbxmx ... not supported` | Old config — set `file_extension`=`rbxm`, `file_content_type`=`model/x-rbxm`. |
+| `HTTP 400 ... model/x-rbxmx ... not supported` | Old config: set `file_extension`=`rbxm`, `file_content_type`=`model/x-rbxm`. |
 | `rojo not found` / `rojo build failed` | Install rojo (`aftman add rojo-rbx/rojo`) or set `rojo_path` in `config.json`. |
-| `Unknown CreatorType Invalid` | `creator.userId` is `0`/missing — set your real user (or group) id. |
+| `Unknown CreatorType Invalid` | `creator.userId` is `0` or missing: set your real user (or group) id. |
 
 ## Files
 
