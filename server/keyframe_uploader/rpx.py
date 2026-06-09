@@ -1,7 +1,7 @@
 """rpx -- command-line launcher for the KeyframeUploader server.
 
 Commands:
-    rpx           Run the server (same as `python server.py`).
+    rpx           Run the server.
     rpx setup     One-time interactive setup (API key, creator, rojo, plugin).
     rpx where     Show where everything lives and whether it's configured.
     rpx help      Show this help.
@@ -17,12 +17,10 @@ import subprocess
 import sys
 import tempfile
 
-import server
-import converter
+from . import server
+from . import converter
 
 SERVER_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_DIR = os.path.dirname(SERVER_DIR)
-PLUGIN_SRC = os.path.join(PROJECT_DIR, "plugin", "KeyframeUploaderPlugin.server.lua")
 PLUGIN_INSTALL_NAME = "KeyframeUploader.lua"
 
 API_KEYS_URL = "https://create.roblox.com/dashboard/credentials?activeTab=ApiKeysTab"
@@ -195,15 +193,9 @@ def cmd_setup() -> None:
                 print("   install ran but the binary wasn't found; open a new terminal")
                 print("   and run `rpx where` to re-check.\n")
 
-    # 4) Install plugin
-    if os.path.exists(PLUGIN_SRC):
-        dest_dir = _plugins_dir()
-        os.makedirs(dest_dir, exist_ok=True)
-        shutil.copyfile(PLUGIN_SRC, _installed_plugin_path())
-        print("Plugin installed -> %s" % _installed_plugin_path())
-        print("  (Restart Studio if it was already open.)\n")
-    else:
-        print("Plugin source missing at %s -- skipped install.\n" % PLUGIN_SRC)
+    # 4) Plugin lives on Roblox; the user installs it in Studio themselves.
+    print("4) Studio plugin")
+    print("   Install it from Roblox: %s\n" % server.PLUGIN_URL)
 
     print("Setup done. Run `rpx where` to check status, then `rpx` to start the server.")
 
@@ -232,8 +224,7 @@ def cmd_where() -> None:
     print("KeyframeUploader -- status\n")
     print(_row(True, "server folder", SERVER_DIR))
     print(_row(os.path.exists(server.CONFIG_PATH), "config.json", server.CONFIG_PATH))
-    print(_row(os.path.exists(PLUGIN_SRC), "plugin source", PLUGIN_SRC))
-    print(_row(os.path.exists(installed), "plugin installed", installed))
+    print(_row(os.path.exists(installed), "plugin in Studio", installed))
     print(_row(True, "server url", "http://127.0.0.1:%s" % port))
     print(_row(bool(key), "api key (%s)" % env_name,
                "set (%d chars)" % len(key) if key else "NOT SET -- run `rpx setup`"))
@@ -276,6 +267,8 @@ def cmd_run() -> None:
 
 
 def main() -> None:
+    server.ensure_config()
+
     cmd = sys.argv[1].lower() if len(sys.argv) > 1 else None
     if cmd in (None, "run", "start"):
         cmd_run()

@@ -1,11 +1,7 @@
-"""KeyframeUploader local companion server.
+"""Local server for the KeyframeUploader plugin.
 
-Receives a batch of serialized KeyframeSequences from the Studio plugin over localhost
-HTTP, rebuilds each as a .rbxmx, uploads it via the Open Cloud Assets API, and returns
-the resulting asset ids in the same response so the plugin can build Animation instances.
-
-Run:  python server.py        (reads config.json next to this file)
-Stdlib only -- no third-party dependencies, so it bundles cleanly with PyInstaller.
+Takes serialized KeyframeSequences over localhost HTTP, rebuilds each as .rbxmx,
+uploads via the Open Cloud Assets API, returns the asset ids. Stdlib only.
 """
 
 import json
@@ -14,19 +10,55 @@ import sys
 import traceback
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-import rbxm
-import converter
-import opencloud
+from . import rbxm
+from . import converter
+from . import opencloud
 
-CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
+
+# Set this once you publish the plugin to Roblox; `rpx setup` shows it to users.
+PLUGIN_URL = "https://create.roblox.com/store/asset/130692548377874/Roblox-Uploader"
+
+DEFAULT_CONFIG = {
+    "port": 34567,
+    "api_key_env": "ROBLOX_OPEN_CLOUD_KEY",
+    "creator": {"userId": 0},
+    "asset_type": "Animation",
+    "file_extension": "rbxm",
+    "file_content_type": "model/x-rbxm",
+    "rojo_path": "",
+}
+
+
+def data_dir() -> str:
+    """Per-user folder that holds config.json."""
+    if os.name == "nt":
+        base = os.environ.get("LOCALAPPDATA") or os.path.expanduser("~\\AppData\\Local")
+    elif sys.platform == "darwin":
+        base = os.path.expanduser("~/Library/Application Support")
+    else:
+        base = os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share")
+    d = os.path.join(base, "KeyframeUploader")
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
+CONFIG_PATH = os.path.join(data_dir(), "config.json")
+
+
+def ensure_config() -> None:
+    """Write a default config.json on first run."""
+    if os.path.exists(CONFIG_PATH):
+        return
+    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+        json.dump(DEFAULT_CONFIG, f, indent=2)
+        f.write("\n")
 
 
 def read_secret(env_name: str) -> str:
     """Read a secret from the environment.
 
-    Falls back to the persisted Windows User-scope variable so the server still works
-    when launched from a terminal that was opened *before* the variable was set (a very
-    common gotcha -- a running process only sees env vars it inherited at startup).
+    Falls back to the saved Windows User variable, so a terminal opened before the
+    variable was set still finds it.
     """
     value = os.environ.get(env_name)
     if value:
@@ -43,10 +75,9 @@ def read_secret(env_name: str) -> str:
 
 
 def write_secret(env_name: str, value: str) -> None:
-    """Persist a secret to the Windows User-scope environment (HKCU\\Environment).
+    """Save a secret to the Windows User environment (HKCU\\Environment).
 
-    Mirrors read_secret. Uses winreg directly (no `setx`, which truncates at 1024 chars).
-    Also updates the current process so it's usable immediately without a new terminal.
+    Uses winreg, not setx (setx truncates at 1024 chars). Updates the live process too.
     """
     if os.name != "nt":
         raise RuntimeError("write_secret currently supports Windows only.")
@@ -137,8 +168,7 @@ class Handler(BaseHTTPRequestHandler):
 def main():
     config = load_config()
 
-    # Refuse to start without the essentials, rather than failing later with a confusing
-    # 401/400 mid-upload.
+    # Fail fast on missing essentials instead of a confusing 401 mid-upload.
     creator = config.get("creator") or {}
     problems = []
     if not config["api_key"]:

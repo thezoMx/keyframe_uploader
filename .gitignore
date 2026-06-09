@@ -11,10 +11,9 @@ __pycache__/
 .venv/
 venv/
 
-# PyInstaller build output
+# Build output (sdist / wheel)
 build/
 dist/
-*.spec
 
 # Editor / OS
 .vscode/

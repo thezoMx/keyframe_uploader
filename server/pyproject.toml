@@ -1,17 +1,33 @@
 [build-system]
-requires = ["setuptools>=61"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "keyframe-uploader"
 version = "0.1.0"
-description = "Local companion server + rpx CLI for the KeyframeUploader Studio plugin"
+description = "Batch-upload Roblox KeyframeSequences to Open Cloud and build Animation instances"
+readme = "README.md"
 requires-python = ">=3.8"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "THEZO" }]
+keywords = ["roblox", "open-cloud", "animation", "keyframesequence", "rbxm"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: Microsoft :: Windows",
+    "Environment :: Console",
+    "Topic :: Multimedia :: Graphics :: 3D Modeling",
+]
+# Runtime is standard-library only -- no dependencies.
 
-# `rpx` becomes a command on PATH after `pip install -e .`
+[project.urls]
+Homepage = "https://github.com/thezoMx/keyframe_uploader"
+Repository = "https://github.com/thezoMx/keyframe_uploader"
+Issues = "https://github.com/thezoMx/keyframe_uploader/issues"
+
+# `rpx` becomes a command on PATH after install.
 [project.scripts]
-rpx = "rpx:main"
+rpx = "keyframe_uploader.rpx:main"
 
-# Flat layout: these single-file modules live next to pyproject.toml in server/
 [tool.setuptools]
-py-modules = ["rpx", "server", "rbxm", "converter", "opencloud"]
+packages = ["keyframe_uploader"]

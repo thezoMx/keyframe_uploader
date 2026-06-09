@@ -28,11 +28,12 @@ through the **Open Cloud Assets API**.
 Install the command once, then everything is driven by `rpx`:
 
 ```powershell
-cd server
-pip install -e .          # creates the `rpx` command on PATH
-rpx setup                 # API key, creator id, auto-install rojo, install the plugin
-rpx                       # run the server (leave it running while you upload)
+pip install keyframe-uploader   # creates the `rpx` command on PATH
+rpx setup                       # API key, creator id, auto-install rojo, install the plugin
+rpx                             # run the server (leave it running while you upload)
 ```
+
+(To work from a clone instead: `cd server` then `pip install -e .`.)
 
 | Command | What it does |
 | --- | --- |
@@ -57,7 +58,7 @@ or running without installing the command).
 
 ## 1. Prerequisites
 
-- **Python 3.8+** installed (only needed to run the server; or use the prebuilt `.exe`).
+- **Python 3.8+** installed (needed to run the server).
 - **rojo** (used to build the binary `.rbxm`). You don't have to install it yourself —
   `rpx setup` installs it via [rokit](https://github.com/rojo-rbx/rokit) if it's missing.
   The server auto-discovers rojo from rokit's (or aftman's) tool-storage or `PATH`;
@@ -82,7 +83,9 @@ Normally env vars are only seen by processes started *after* you set them, so yo
 new terminal. On Windows the server also reads the saved value directly (from the registry),
 so it works even from a terminal that was already open.
 
-Everything non-secret lives in `server/config.json`:
+Everything non-secret lives in a per-user `config.json`, created automatically on first run
+(and populated by `rpx setup`). It lives in your platform's app-data folder — on Windows that's
+`%LOCALAPPDATA%\KeyframeUploader\config.json`. `rpx where` prints the exact path. Its contents:
 
 ```json
 {
@@ -108,15 +111,10 @@ Everything non-secret lives in `server/config.json`:
 ## 3. Run the server
 
 ```powershell
-cd server
-./run.ps1            # or:  python server.py
+rpx                 # or:  python -m keyframe_uploader
 ```
 
 You should see `KeyframeUploader server listening on http://127.0.0.1:34567`.
-
-**For non-technical users:** build a one-file exe with `./build_exe.ps1`
-(requires `pip install pyinstaller`). Ship `dist/KeyframeUploaderServer.exe` next to a
-`config.json` they fill in, and they just double-click it.
 
 ## 4. Install the plugin
 
@@ -163,14 +161,15 @@ build is a single undo step.
 
 ```
 server/
-  server.py        local HTTP server (POST /upload)
-  rbxm.py          rebuild KeyframeSequence -> .rbxmx (XML)
-  converter.py     convert .rbxmx -> binary .rbxm via rojo
-  opencloud.py     Open Cloud Assets API upload + operation polling
-  config.json      api key, creator, port, asset type
-  run.ps1          launch the server
-  build_exe.ps1    build a standalone exe (PyInstaller)
-  requirements.txt
+  pyproject.toml                  package metadata; defines the `rpx` command
+  LICENSE
+  README.md
+  keyframe_uploader/
+    rpx.py         `rpx` CLI: run / setup / where (entry point)
+    server.py      local HTTP server (POST /upload)
+    rbxm.py        rebuild KeyframeSequence -> .rbxmx (XML)
+    converter.py   convert .rbxmx -> binary .rbxm via rojo
+    opencloud.py   Open Cloud Assets API upload + operation polling
 plugin/
   KeyframeUploaderPlugin.server.lua   the Studio plugin (single file)
 ```
